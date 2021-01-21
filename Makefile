@@ -19,4 +19,4 @@ check:
 tag:
 	git tag v${VERSION}
 	git push origin v${VERSION}
-	git push origin master
+	git push origin HEAD
