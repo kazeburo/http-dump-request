@@ -1,0 +1,33 @@
+<html>
+
+<head>
+    <title>http dump request</title>
+    <link rel="icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon.ico">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.5/css/bulma.min.css" />
+    <style>
+        #output {
+            color: #272822;
+            background-color: #fafafa
+        }
+
+        #output pre {
+            padding: 0;
+
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1 class="title">your http request</h1>
+
+        <div class="field box" id="output">{{.Body}}</div>
+
+        <div class="notification">
+            If you want plaintext http dump, add `plain` to query string.
+        </div>
+    </div>
+</body>
+
+</html>

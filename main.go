@@ -1,14 +1,22 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
 	"net/http/httputil"
 	"os"
+	"path/filepath"
+	"strings"
+	"text/template"
 	"time"
 
+	"github.com/alecthomas/chroma/formatters/html"
+	"github.com/alecthomas/chroma/lexers"
+	"github.com/alecthomas/chroma/styles"
 	_ "github.com/kazeburo/http-dump-request/statik"
 
 	"github.com/gorilla/mux"
@@ -23,6 +31,33 @@ type commandOpts struct {
 	WriteTimeout time.Duration `long:"write-timeout" default:"90s" description:"timeout of writing response"`
 }
 
+func getTemplate(fileName string) (string, error) {
+
+	filePath := filepath.Join("/", fileName)
+	fileSystem, err := fs.New()
+	if err != nil {
+		return "", err
+	}
+
+	file, err := fileSystem.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+
+	defer file.Close()
+
+	fileContent, err := ioutil.ReadAll(file)
+	if err != nil {
+		return "", err
+	}
+
+	return string(fileContent), err
+}
+
+type dumpData struct {
+	Body string
+}
+
 func handleDump(w http.ResponseWriter, r *http.Request) {
 	dump, err := httputil.DumpRequest(r, true)
 	if err != nil {
@@ -30,7 +65,50 @@ func handleDump(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 		return
 	}
-	w.Write(dump)
+	if strings.Contains(r.URL.RawQuery, "plain") {
+		w.Write(dump)
+		return
+	}
+
+	lexer := lexers.Get("HTTP")
+	if lexer == nil {
+		lexer = lexers.Fallback
+	}
+	style := styles.Get("monokailight")
+	if style == nil {
+		style = styles.Fallback
+	}
+	formatter := html.New(html.Standalone(false), html.WithLineNumbers(true))
+
+	buf := new(bytes.Buffer)
+
+	it, err := lexer.Tokenise(nil, string(dump))
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	err = formatter.Format(buf, style, it)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	dumpMsg := dumpData{buf.String()}
+	indexHtml, err := getTemplate("index.html")
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	indexTmpl, err := template.New("index").Parse(indexHtml)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	indexTmpl.Execute(w, dumpMsg)
 }
 
 func handleHello(w http.ResponseWriter, r *http.Request) {
@@ -58,10 +136,9 @@ func _main() int {
 	}
 
 	m := mux.NewRouter()
-	m.HandleFunc("/", handleDump)
 	m.HandleFunc("/live", handleHello)
 	m.Handle("/favicon.ico", http.FileServer(statikFS))
-
+	m.PathPrefix("/").HandlerFunc(handleDump)
 	server := http.Server{
 		Handler:      m,
 		ReadTimeout:  opts.ReadTimeout,
