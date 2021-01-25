@@ -8,24 +8,50 @@
     <style>
         #output {
             color: #272822;
-            background-color: #fafafa
+            background-color: #f5f5f5;
         }
 
         #output pre {
             padding: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            word-break: break-all;
+        }
 
+        #output td {
+            font-size: 1.2em !important;
+            line-height: 1.6em !important;
+        }
+
+        .in {
+            width: 3em;
+            padding-right: 0.4em;
+            border-right: 1px solid #ccc !important;
+            text-align: right !important;
+            user-select: none;
+            /* 追加した行番号は選択不可にする */
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            -o-user-select: none;
+            overflow-x: hidden !important;
+            color: #ccc;
+        }
+
+        .tc {
+            padding-left: 0.4em;
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <h1 class="title">your http request</h1>
+        <h1 class="title">HTTP request</h1>
 
         <div class="field box" id="output">{{.Body}}</div>
 
         <div class="notification">
-            If you want plaintext http dump, add `plain` to query string.
+            If you want plaintext http dump, add <code>plain</code> to query string.
         </div>
     </div>
 </body>

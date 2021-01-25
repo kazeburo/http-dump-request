@@ -58,6 +58,19 @@ type dumpData struct {
 	Body string
 }
 
+type preWrapper struct {
+	StyleAttr string
+}
+
+func (p preWrapper) Start(code bool, styleAttr string) string {
+	p.StyleAttr = styleAttr
+	return ""
+}
+
+func (p preWrapper) End(code bool) string {
+	return ""
+}
+
 func handleDump(w http.ResponseWriter, r *http.Request) {
 	dump, err := httputil.DumpRequest(r, true)
 	if err != nil {
@@ -65,7 +78,7 @@ func handleDump(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 		return
 	}
-	if strings.Contains(r.URL.RawQuery, "plain") {
+	if strings.Contains(r.URL.RawQuery, "plain") || strings.Index(r.UserAgent(), "curl/") == 0 {
 		w.Write(dump)
 		return
 	}
@@ -78,7 +91,8 @@ func handleDump(w http.ResponseWriter, r *http.Request) {
 	if style == nil {
 		style = styles.Fallback
 	}
-	formatter := html.New(html.Standalone(false), html.WithLineNumbers(true))
+	pw := &preWrapper{}
+	formatter := html.New(html.Standalone(false), html.WithPreWrapper(pw))
 
 	buf := new(bytes.Buffer)
 
@@ -95,14 +109,19 @@ func handleDump(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dumpMsg := dumpData{buf.String()}
-	indexHtml, err := getTemplate("index.html")
+	hlcodes := make([]string, 0)
+	for k, s := range strings.Split(buf.String(), "\n") {
+		hlcodes = append(hlcodes, fmt.Sprintf(`<tr><td class="in">%d</td><td class="tc">`, k+1)+s+"</td></tr>")
+	}
+	hlcode := "<pre" + pw.StyleAttr + "><table>" + strings.Join(hlcodes, "\n") + "</table></pre>"
+	dumpMsg := dumpData{hlcode}
+	indexHTML, err := getTemplate("index.html")
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte(err.Error()))
 		return
 	}
-	indexTmpl, err := template.New("index").Parse(indexHtml)
+	indexTmpl, err := template.New("index").Parse(indexHTML)
 	if err != nil {
 		fmt.Println(err)
 		return
