@@ -55,19 +55,20 @@ func getTemplate(fileName string) (string, error) {
 }
 
 type dumpData struct {
-	Body string
+	Body  string
+	Style string
 }
 
 type preWrapper struct {
-	StyleAttr string
+	styleAttr string
 }
 
-func (p preWrapper) Start(code bool, styleAttr string) string {
-	p.StyleAttr = styleAttr
+func (p *preWrapper) Start(code bool, styleAttr string) string {
+	p.styleAttr = styleAttr
 	return ""
 }
 
-func (p preWrapper) End(code bool) string {
+func (p *preWrapper) End(code bool) string {
 	return ""
 }
 
@@ -91,8 +92,8 @@ func handleDump(w http.ResponseWriter, r *http.Request) {
 	if style == nil {
 		style = styles.Fallback
 	}
-	pw := &preWrapper{}
-	formatter := html.New(html.Standalone(false), html.WithPreWrapper(pw))
+	pwr := &preWrapper{}
+	formatter := html.New(html.Standalone(false), html.WithPreWrapper(pwr))
 
 	buf := new(bytes.Buffer)
 
@@ -108,13 +109,16 @@ func handleDump(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 		return
 	}
-
-	hlcodes := make([]string, 0)
+	lines := make([]string, 0)
 	for k, s := range strings.Split(buf.String(), "\n") {
-		hlcodes = append(hlcodes, fmt.Sprintf(`<tr><td class="in">%d</td><td class="tc">`, k+1)+s+"</td></tr>")
+		lines = append(lines, fmt.Sprintf(`<tr><td>%d</td><td>%s</td></tr>`, k+1, s))
 	}
-	hlcode := "<pre" + pw.StyleAttr + "><table>" + strings.Join(hlcodes, "\n") + "</table></pre>"
-	dumpMsg := dumpData{hlcode}
+
+	code := "<pre><table>" + strings.Join(lines, "\n") + "</table></pre>"
+	dumpMsg := dumpData{
+		Body:  code,
+		Style: pwr.styleAttr,
+	}
 	indexHTML, err := getTemplate("index.html")
 	if err != nil {
 		w.WriteHeader(500)
