@@ -31,7 +31,7 @@ type commandOpts struct {
 	WriteTimeout time.Duration `long:"write-timeout" default:"90s" description:"timeout of writing response"`
 }
 
-func getTemplate(fileName string) (string, error) {
+func getFile(fileName string) (string, error) {
 
 	filePath := filepath.Join("/", fileName)
 	fileSystem, err := fs.New()
@@ -57,6 +57,7 @@ func getTemplate(fileName string) (string, error) {
 type dumpData struct {
 	Body  string
 	Style string
+	Title string
 }
 
 type preWrapper struct {
@@ -72,19 +73,8 @@ func (p *preWrapper) End(code bool) string {
 	return ""
 }
 
-func handleDump(w http.ResponseWriter, r *http.Request) {
-	dump, err := httputil.DumpRequest(r, true)
-	if err != nil {
-		w.WriteHeader(500)
-		w.Write([]byte(err.Error()))
-		return
-	}
-	if strings.Contains(r.URL.RawQuery, "plain") || strings.Index(r.UserAgent(), "curl/") == 0 {
-		w.Write(dump)
-		return
-	}
-
-	lexer := lexers.Get("HTTP")
+func formatHTML(name, code string) (*dumpData, error) {
+	lexer := lexers.Get(name)
 	if lexer == nil {
 		lexer = lexers.Fallback
 	}
@@ -97,29 +87,77 @@ func handleDump(w http.ResponseWriter, r *http.Request) {
 
 	buf := new(bytes.Buffer)
 
-	it, err := lexer.Tokenise(nil, string(dump))
+	it, err := lexer.Tokenise(nil, code)
 	if err != nil {
-		w.WriteHeader(500)
-		w.Write([]byte(err.Error()))
-		return
+		return nil, err
 	}
 	err = formatter.Format(buf, style, it)
 	if err != nil {
-		w.WriteHeader(500)
-		w.Write([]byte(err.Error()))
-		return
+		return nil, err
 	}
 	lines := make([]string, 0)
 	for k, s := range strings.Split(buf.String(), "\n") {
 		lines = append(lines, fmt.Sprintf(`<tr><td>%d</td><td>%s</td></tr>`, k+1, s))
 	}
 
-	code := "<pre><table>" + strings.Join(lines, "\n") + "</table></pre>"
-	dumpMsg := dumpData{
-		Body:  code,
+	body := "<pre><table>" + strings.Join(lines, "\n") + "</table></pre>"
+	dumpMsg := &dumpData{
+		Body:  body,
 		Style: pwr.styleAttr,
 	}
-	indexHTML, err := getTemplate("index.html")
+	return dumpMsg, nil
+}
+
+func handleSelf(code string) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.RawQuery, "plain") || strings.Index(r.UserAgent(), "curl/") == 0 {
+			w.Write([]byte(code))
+			return
+		}
+		dumpMsg, err := formatHTML("Go", string(code))
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		dumpMsg.Title = "Souce code"
+		indexHTML, err := getFile("index.html")
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		indexTmpl, err := template.New("index").Parse(indexHTML)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		indexTmpl.Execute(w, dumpMsg)
+	}
+}
+
+func handleDump(w http.ResponseWriter, r *http.Request) {
+	dump, err := httputil.DumpRequest(r, true)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	if strings.Contains(r.URL.RawQuery, "plain") || strings.Index(r.UserAgent(), "curl/") == 0 {
+		w.Write(dump)
+		return
+	}
+
+	dumpMsg, err := formatHTML("HTML", string(dump))
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	dumpMsg.Title = "HTTP request"
+
+	indexHTML, err := getFile("index.html")
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte(err.Error()))
@@ -158,8 +196,15 @@ func _main() int {
 		return 1
 	}
 
+	self, err := getFile("main.go")
+	if err != nil {
+		log.Printf("failed to read main.go %v", err)
+		return 1
+	}
+
 	m := mux.NewRouter()
 	m.HandleFunc("/live", handleHello)
+	m.HandleFunc("/self", handleSelf(self))
 	m.Handle("/favicon.ico", http.FileServer(statikFS))
 	m.PathPrefix("/").HandlerFunc(handleDump)
 	server := http.Server{
