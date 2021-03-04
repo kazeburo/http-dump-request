@@ -1,4 +1,4 @@
-VERSION=0.0.8
+VERSION=0.0.9
 LDFLAGS=-ldflags "-w -s -X main.version=${VERSION}"
 GO111MODULE=on
 
