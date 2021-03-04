@@ -218,7 +218,7 @@ func _main() int {
 		return 1
 	}
 
-	g, _ := gziphandler.NewGzipLevelAndMinSize(6, 10)
+	g, _ := gziphandler.NewGzipLevelAndMinSize(6, 5)
 
 	m := mux.NewRouter()
 	m.Handle("/live", g(http.HandlerFunc(handleHello)))
