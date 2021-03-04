@@ -212,6 +212,7 @@ func _main() int {
 		ReadTimeout:  opts.ReadTimeout,
 		WriteTimeout: opts.WriteTimeout,
 	}
+	server.SetKeepAlivesEnabled(false)
 	listen, err := net.Listen("tcp", fmt.Sprintf("%s:%s", opts.Listen, opts.Port))
 	if err != nil {
 		log.Fatal(err)
