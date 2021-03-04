@@ -14,6 +14,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/NYTimes/gziphandler"
 	"github.com/alecthomas/chroma/formatters/html"
 	"github.com/alecthomas/chroma/lexers"
 	"github.com/alecthomas/chroma/styles"
@@ -108,9 +109,8 @@ func formatHTML(name, code string) (*dumpData, error) {
 	return dumpMsg, nil
 }
 
-func handleSelf(code string) func(w http.ResponseWriter, r *http.Request) {
+func handleSource(code string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Transfer-Encoding", "identity")
 		if strings.Contains(r.URL.RawQuery, "plain") || strings.Index(r.UserAgent(), "curl/") == 0 {
 			w.Write([]byte(code))
 			return
@@ -133,7 +133,6 @@ func handleSelf(code string) func(w http.ResponseWriter, r *http.Request) {
 			fmt.Println(err)
 			return
 		}
-
 		indexTmpl.Execute(w, dumpMsg)
 	}
 }
@@ -197,7 +196,7 @@ func _main() int {
 		return 1
 	}
 
-	self, err := getFile("main.go")
+	source, err := getFile("main.go")
 	if err != nil {
 		log.Printf("failed to read main.go %v", err)
 		return 1
@@ -205,11 +204,12 @@ func _main() int {
 
 	m := mux.NewRouter()
 	m.HandleFunc("/live", handleHello)
-	m.HandleFunc("/self", handleSelf(self))
+	m.HandleFunc("/source", handleSource(source))
 	m.Handle("/favicon.ico", http.FileServer(statikFS))
 	m.PathPrefix("/").HandlerFunc(handleDump)
+
 	server := http.Server{
-		Handler:      m,
+		Handler:      gziphandler.GzipHandler(m),
 		ReadTimeout:  opts.ReadTimeout,
 		WriteTimeout: opts.WriteTimeout,
 	}
