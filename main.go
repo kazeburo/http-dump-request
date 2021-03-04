@@ -149,7 +149,7 @@ func handleDump(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dumpMsg, err := formatHTML("HTML", string(dump))
+	dumpMsg, err := formatHTML("HTTP", string(dump))
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte(err.Error()))
