@@ -20,6 +20,9 @@ jobs:
       - name: install statik
         run: go install github.com/rakyll/statik
 
+      - name: install statik
+        run: statik -src=public
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
