@@ -1,7 +1,7 @@
 <html>
 
 <head>
-    <title>http dump request</title>
+    <title>http dump request/{{.Title}}</title>
     <link rel="icon" href="/favicon.ico">
     <link rel="apple-touch-icon" sizes="180x180" href="/favicon.ico">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.5/css/bulma.min.css" />
@@ -13,10 +13,14 @@
 
         #output pre {
             padding: 0;
-            white-space: pre-wrap;
+            white-space: pre-wrap !important;
             word-wrap: break-word;
             word-break: break-all;
             background-color: inherit !important;
+        }
+
+        #output table {
+            white-space: pre-wrap !important;
         }
 
         #output td {
@@ -55,7 +59,7 @@
 
 <body>
     <div class="container">
-        <h1 class="title">HTTP request</h1>
+        <h1 class="title">{{.Title}}</h1>
 
         <div class="field box" id="output" {{.Style}}>{{.Body}}</div>
 
