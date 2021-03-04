@@ -176,6 +176,22 @@ func handleHello(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("OK\n"))
 }
 
+func handleChunk(w http.ResponseWriter, r *http.Request) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		w.WriteHeader(500)
+		w.Write([]byte("expected http.ResponseWriter to be an http.Flusher"))
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	flusher.Flush()
+	for i := 1; i <= 7; i++ {
+		w.Write([]byte(fmt.Sprintf("Chunk #%d\n", i)))
+		flusher.Flush()
+		time.Sleep(500 * time.Millisecond)
+	}
+}
+
 func main() {
 	os.Exit(_main())
 }
@@ -202,14 +218,16 @@ func _main() int {
 		return 1
 	}
 
-	m := mux.NewRouter()
-	m.HandleFunc("/live", handleHello)
-	m.HandleFunc("/source", handleSource(source))
-	m.Handle("/favicon.ico", http.FileServer(statikFS))
-	m.PathPrefix("/").HandlerFunc(handleDump)
+	g, _ := gziphandler.NewGzipLevelAndMinSize(6, 10)
 
+	m := mux.NewRouter()
+	m.Handle("/live", g(http.HandlerFunc(handleHello)))
+	m.Handle("/source", g(http.HandlerFunc(handleSource(source))))
+	m.Handle("/chunk", g(http.HandlerFunc(handleChunk)))
+	m.Handle("/favicon.ico", http.FileServer(statikFS))
+	m.PathPrefix("/").Handler(g(http.HandlerFunc(handleDump)))
 	server := http.Server{
-		Handler:      gziphandler.GzipHandler(m),
+		Handler:      m,
 		ReadTimeout:  opts.ReadTimeout,
 		WriteTimeout: opts.WriteTimeout,
 	}
