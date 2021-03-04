@@ -110,6 +110,7 @@ func formatHTML(name, code string) (*dumpData, error) {
 
 func handleSelf(code string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Transfer-Encoding", "identity")
 		if strings.Contains(r.URL.RawQuery, "plain") || strings.Index(r.UserAgent(), "curl/") == 0 {
 			w.Write([]byte(code))
 			return
@@ -212,7 +213,7 @@ func _main() int {
 		ReadTimeout:  opts.ReadTimeout,
 		WriteTimeout: opts.WriteTimeout,
 	}
-	server.SetKeepAlivesEnabled(false)
+	// server.SetKeepAlivesEnabled(false)
 	listen, err := net.Listen("tcp", fmt.Sprintf("%s:%s", opts.Listen, opts.Port))
 	if err != nil {
 		log.Fatal(err)
