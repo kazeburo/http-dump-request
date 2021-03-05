@@ -176,19 +176,26 @@ func handleHello(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("OK\n"))
 }
 
-func handleChunk(w http.ResponseWriter, r *http.Request) {
+func handleFizzBuzz(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		w.WriteHeader(500)
 		w.Write([]byte("expected http.ResponseWriter to be an http.Flusher"))
 		return
 	}
-	w.WriteHeader(http.StatusOK)
-	flusher.Flush()
-	for i := 1; i <= 7; i++ {
-		w.Write([]byte(fmt.Sprintf("Chunk #%d\n", i)))
+	for i := 1; i <= 15; i++ {
+		p := fmt.Sprintf("#%03d ", i)
+		if i%3 == 0 {
+			p += "Fizz"
+		}
+		if i%5 == 0 {
+			p += "Buzz"
+		}
+		p = strings.TrimSpace(p)
+		p += "\n"
+		w.Write([]byte(p))
 		flusher.Flush()
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(300 * time.Millisecond)
 	}
 }
 
@@ -223,7 +230,7 @@ func _main() int {
 	m := mux.NewRouter()
 	m.Handle("/live", g(http.HandlerFunc(handleHello)))
 	m.Handle("/source", g(http.HandlerFunc(handleSource(source))))
-	m.Handle("/chunk", g(http.HandlerFunc(handleChunk)))
+	m.Handle("/demo/fizzbuzz", g(http.HandlerFunc(handleFizzBuzz)))
 	m.Handle("/favicon.ico", http.FileServer(statikFS))
 	m.PathPrefix("/").Handler(g(http.HandlerFunc(handleDump)))
 	server := http.Server{
