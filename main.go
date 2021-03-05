@@ -55,6 +55,14 @@ func getFile(fileName string) (string, error) {
 	return string(fileContent), err
 }
 
+func getTemplate(fileName string) (*template.Template, error) {
+	indexHTML, err := getFile("index.html")
+	if err != nil {
+		return nil, err
+	}
+	return template.New("index").Parse(indexHTML)
+}
+
 type dumpData struct {
 	Body  string
 	Style string
@@ -74,7 +82,7 @@ func (p *preWrapper) End(code bool) string {
 	return ""
 }
 
-func formatHTML(name, code string) (*dumpData, error) {
+func colorHTML(name, code string) (*dumpData, error) {
 	lexer := lexers.Get(name)
 	if lexer == nil {
 		lexer = lexers.Fallback
@@ -109,31 +117,31 @@ func formatHTML(name, code string) (*dumpData, error) {
 	return dumpMsg, nil
 }
 
+func formatHTML(w http.ResponseWriter, r *http.Request, name, code, title string) {
+	if strings.Contains(r.URL.RawQuery, "plain") || strings.Index(r.UserAgent(), "curl/") == 0 {
+		w.Write([]byte(code))
+		return
+	}
+	dumpMsg, err := colorHTML(name, code)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	dumpMsg.Title = title
+	indexTmpl, err := getTemplate("index.html")
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	indexTmpl.Execute(w, dumpMsg)
+
+}
+
 func handleSource(code string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if strings.Contains(r.URL.RawQuery, "plain") || strings.Index(r.UserAgent(), "curl/") == 0 {
-			w.Write([]byte(code))
-			return
-		}
-		dumpMsg, err := formatHTML("Go", string(code))
-		if err != nil {
-			w.WriteHeader(500)
-			w.Write([]byte(err.Error()))
-			return
-		}
-		dumpMsg.Title = "Souce code"
-		indexHTML, err := getFile("index.html")
-		if err != nil {
-			w.WriteHeader(500)
-			w.Write([]byte(err.Error()))
-			return
-		}
-		indexTmpl, err := template.New("index").Parse(indexHTML)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		indexTmpl.Execute(w, dumpMsg)
+		formatHTML(w, r, "Go", code, "Source Code")
 	}
 }
 
@@ -144,32 +152,45 @@ func handleDump(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 		return
 	}
+	formatHTML(w, r, "HTTP", string(dump), "HTTP request")
+}
+
+func handleBasic(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	dump, err := httputil.DumpRequest(r, true)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	dumpMsg, err := colorHTML("HTTP", string(dump))
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	dumpMsg.Title = "HTTP request for restricted area"
+
+	indexTmpl, err := getTemplate("index.html")
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	if user, pass, ok := r.BasicAuth(); !ok || user != vars["id"] || pass != vars["pw"] {
+		w.Header().Add("WWW-Authenticate", `Basic realm="restricted area"`)
+		w.WriteHeader(http.StatusUnauthorized)
+	}
+
 	if strings.Contains(r.URL.RawQuery, "plain") || strings.Index(r.UserAgent(), "curl/") == 0 {
 		w.Write(dump)
 		return
 	}
 
-	dumpMsg, err := formatHTML("HTTP", string(dump))
-	if err != nil {
-		w.WriteHeader(500)
-		w.Write([]byte(err.Error()))
-		return
-	}
-	dumpMsg.Title = "HTTP request"
-
-	indexHTML, err := getFile("index.html")
-	if err != nil {
-		w.WriteHeader(500)
-		w.Write([]byte(err.Error()))
-		return
-	}
-	indexTmpl, err := template.New("index").Parse(indexHTML)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
 	indexTmpl.Execute(w, dumpMsg)
+
 }
 
 func handleHello(w http.ResponseWriter, r *http.Request) {
@@ -231,6 +252,8 @@ func _main() int {
 	m.Handle("/live", g(http.HandlerFunc(handleHello)))
 	m.Handle("/source", g(http.HandlerFunc(handleSource(source))))
 	m.Handle("/demo/fizzbuzz", g(http.HandlerFunc(handleFizzBuzz)))
+	m.Handle("/demo/fizzbuzz_stream", g(http.HandlerFunc(handleFizzBuzz)))
+	m.Handle("/demo/basic/{id}/{pw}", g(http.HandlerFunc(handleBasic)))
 	m.Handle("/favicon.ico", http.FileServer(statikFS))
 	m.PathPrefix("/").Handler(g(http.HandlerFunc(handleDump)))
 	server := http.Server{
