@@ -27,6 +27,9 @@ import (
 	"github.com/rakyll/statik/fs"
 )
 
+// version by Makefile
+var version string
+
 type commandOpts struct {
 	Listen       string        `short:"l" long:"listen" default:"0.0.0.0" description:"address to bind"`
 	Port         string        `short:"p" long:"port" default:"3000" description:"Port number to bind"`
@@ -199,6 +202,10 @@ func handleHello(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("OK\n"))
 }
 
+func handleVersion(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("VERSION:" + version + "\n"))
+}
+
 func handleFizzBuzz(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
@@ -278,6 +285,7 @@ func _main() int {
 
 	m := mux.NewRouter()
 	m.Handle("/live", ng(g(http.HandlerFunc(handleHello))))
+	m.Handle("/version", ng(g(http.HandlerFunc(handleVersion))))
 	m.Handle("/source", ng(g(http.HandlerFunc(handleSource(source)))))
 	m.Handle("/demo/fizzbuzz", ng(g(http.HandlerFunc(handleFizzBuzz))))
 	m.Handle("/demo/fizzbuzz_stream", ng(g(http.HandlerFunc(handleFizzBuzz))))
