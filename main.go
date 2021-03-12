@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"compress/gzip"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -146,25 +148,25 @@ func handleSource(code string) func(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDump(w http.ResponseWriter, r *http.Request) {
-	dump, err := httputil.DumpRequest(r, true)
+	dump, err := dumpRequest(r)
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte(err.Error()))
 		return
 	}
-	formatHTML(w, r, "HTTP", string(dump), "HTTP request")
+	formatHTML(w, r, "HTTP", dump, "HTTP request")
 }
 
 func handleBasic(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	dump, err := httputil.DumpRequest(r, true)
+	dump, err := dumpRequest(r)
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte(err.Error()))
 		return
 	}
 
-	dumpMsg, err := colorHTML("HTTP", string(dump))
+	dumpMsg, err := colorHTML("HTTP", dump)
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte(err.Error()))
@@ -185,7 +187,7 @@ func handleBasic(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if strings.Contains(r.URL.RawQuery, "plain") || strings.Index(r.UserAgent(), "curl/") == 0 {
-		w.Write(dump)
+		w.Write([]byte(dump))
 		return
 	}
 
@@ -220,6 +222,32 @@ func handleFizzBuzz(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func ng(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.RawQuery, "nogzip") || strings.Contains(r.URL.RawQuery, "no-gzip") {
+			deletedAE := r.Header.Get("Accept-Encoding")
+			if deletedAE != "" {
+				r.Header.Set("Hdr-Accept-Encoding", deletedAE)
+			}
+			r.Header.Del("Accept-Encoding")
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func dumpRequest(r *http.Request) (string, error) {
+	r2 := r.Clone(context.Background())
+	if deletedAE := r.Header.Get("Hdr-Accept-Encoding"); deletedAE != "" {
+		r2.Header.Set("Accept-Encoding", deletedAE)
+		r2.Header.Del("Hdr-Accept-Encoding")
+	}
+	dump, err := httputil.DumpRequest(r2, true)
+	if err != nil {
+		return "", err
+	}
+	return string(dump), nil
+}
+
 func main() {
 	os.Exit(_main())
 }
@@ -246,16 +274,16 @@ func _main() int {
 		return 1
 	}
 
-	g, _ := gziphandler.NewGzipLevelAndMinSize(6, 5)
+	g, _ := gziphandler.NewGzipLevelAndMinSize(gzip.DefaultCompression, 5)
 
 	m := mux.NewRouter()
-	m.Handle("/live", g(http.HandlerFunc(handleHello)))
-	m.Handle("/source", g(http.HandlerFunc(handleSource(source))))
-	m.Handle("/demo/fizzbuzz", g(http.HandlerFunc(handleFizzBuzz)))
-	m.Handle("/demo/fizzbuzz_stream", g(http.HandlerFunc(handleFizzBuzz)))
-	m.Handle("/demo/basic/{id}/{pw}", g(http.HandlerFunc(handleBasic)))
+	m.Handle("/live", ng(g(http.HandlerFunc(handleHello))))
+	m.Handle("/source", ng(g(http.HandlerFunc(handleSource(source)))))
+	m.Handle("/demo/fizzbuzz", ng(g(http.HandlerFunc(handleFizzBuzz))))
+	m.Handle("/demo/fizzbuzz_stream", ng(g(http.HandlerFunc(handleFizzBuzz))))
+	m.Handle("/demo/basic/{id}/{pw}", ng(g(http.HandlerFunc(handleBasic))))
 	m.Handle("/favicon.ico", http.FileServer(statikFS))
-	m.PathPrefix("/").Handler(g(http.HandlerFunc(handleDump)))
+	m.PathPrefix("/").Handler(ng(g(http.HandlerFunc(handleDump))))
 	server := http.Server{
 		Handler:      m,
 		ReadTimeout:  opts.ReadTimeout,
