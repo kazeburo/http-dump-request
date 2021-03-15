@@ -23,6 +23,14 @@ my-great-hostname
 
 `/whoami.txt` is also supported.
 
+
+### Status Code
+
+```
+% curl --compressed localhost:3000/demo/status/418
+418 I'm a teapot
+```
+
 ### fizzbuzz stream
 
 fizzbuzz with chunked transfer and interval

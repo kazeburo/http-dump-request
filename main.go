@@ -12,6 +12,7 @@ import (
 	"net/http/httputil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -216,6 +217,24 @@ func handleWhoami(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(hostname + "\n"))
 }
 
+func handleStatus(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	code, err := strconv.Atoi(vars["code"])
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	msg := http.StatusText(code)
+	if msg == "" {
+		w.WriteHeader(400)
+		w.Write([]byte("Status " + vars["code"] + " is not supported\n"))
+		return
+	}
+	w.WriteHeader(code)
+	w.Write([]byte(fmt.Sprintf("%03d %s\n", code, msg)))
+}
+
 func handleFizzBuzz(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
@@ -300,6 +319,7 @@ func _main() int {
 	m.Handle(`/whoami{dummy:(?:|\.txt)}`, ng(g(http.HandlerFunc(handleWhoami))))
 	m.Handle("/demo/fizzbuzz{dummy:(?:|_stream)}", ng(g(http.HandlerFunc(handleFizzBuzz))))
 	m.Handle("/demo/basic/{id}/{pw}", ng(g(http.HandlerFunc(handleBasic))))
+	m.Handle(`/demo/status/{code:\d{3}}`, ng(g(http.HandlerFunc(handleStatus))))
 	m.Handle("/favicon.ico", http.FileServer(statikFS))
 	m.PathPrefix("/").Handler(ng(g(http.HandlerFunc(handleDump))))
 	server := http.Server{
