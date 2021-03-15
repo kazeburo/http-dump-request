@@ -1,5 +1,6 @@
 # http-dump-request
-http-dump-request server and docker container for test
+
+http-dump-request server and docker container for test or monitoring
 
 ## API
 
@@ -12,6 +13,15 @@ Host: localhost:3000
 Accept: */*
 User-Agent: curl/7.64.1
 ```
+
+### whoami / hostname
+
+```
+% curl --compressed localhost:3000/whoami 
+my-great-hostname
+```
+
+`/whoami.txt` is also supported.
 
 ### fizzbuzz stream
 
@@ -52,6 +62,8 @@ fizzbuzz with chunked transfer and interval
 * Closing connection 0
 ```
 
+`/demo/fizzbuzz` is also supported.
+
 ### basic auth
 
 Use URI path as id and password
@@ -77,6 +89,13 @@ User-Agent: curl/7.64.1
 ```
 % curl http://localhost:3000/live
 OK
+```
+
+### version
+
+```
+% curl http://localhost:3000/version
+0.1.x
 ```
 
 ## Run with docker

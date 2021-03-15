@@ -206,6 +206,16 @@ func handleVersion(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("VERSION:" + version + "\n"))
 }
 
+func handleWhoami(w http.ResponseWriter, r *http.Request) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	w.Write([]byte(hostname + "\n"))
+}
+
 func handleFizzBuzz(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
@@ -287,8 +297,8 @@ func _main() int {
 	m.Handle("/live", ng(g(http.HandlerFunc(handleHello))))
 	m.Handle("/version", ng(g(http.HandlerFunc(handleVersion))))
 	m.Handle("/source", ng(g(http.HandlerFunc(handleSource(source)))))
-	m.Handle("/demo/fizzbuzz", ng(g(http.HandlerFunc(handleFizzBuzz))))
-	m.Handle("/demo/fizzbuzz_stream", ng(g(http.HandlerFunc(handleFizzBuzz))))
+	m.Handle(`/whoami{dummy:(?:|\.txt)}`, ng(g(http.HandlerFunc(handleWhoami))))
+	m.Handle("/demo/fizzbuzz{dummy:(?:|_stream)}", ng(g(http.HandlerFunc(handleFizzBuzz))))
 	m.Handle("/demo/basic/{id}/{pw}", ng(g(http.HandlerFunc(handleBasic))))
 	m.Handle("/favicon.ico", http.FileServer(statikFS))
 	m.PathPrefix("/").Handler(ng(g(http.HandlerFunc(handleDump))))
