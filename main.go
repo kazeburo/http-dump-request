@@ -313,31 +313,31 @@ func _main() int {
 	g, _ := gziphandler.NewGzipLevelAndMinSize(gzip.DefaultCompression, 5)
 
 	m := mux.NewRouter()
-	m.Handle("/live", http.HandlerFunc(handleHello))
-	m.Handle("/nogzip/live", g(http.HandlerFunc(handleHello)))
+	m.Handle("/live", g(http.HandlerFunc(handleHello)))
+	m.Handle("/nogzip/live", http.HandlerFunc(handleHello))
 
-	m.Handle("/version", http.HandlerFunc(handleVersion))
-	m.Handle("/nogzip/version", g(http.HandlerFunc(handleVersion)))
+	m.Handle("/version", g((http.HandlerFunc(handleVersion))))
+	m.Handle("/nogzip/version", http.HandlerFunc(handleVersion))
 
-	m.Handle("/source", http.HandlerFunc(handleSource(source)))
-	m.Handle("/nogzip/source", g(http.HandlerFunc(handleSource(source))))
+	m.Handle("/source", g(http.HandlerFunc(handleSource(source))))
+	m.Handle("/nogzip/source", http.HandlerFunc(handleSource(source)))
 
-	m.Handle(`/whoami{dummy:(?:|\.txt)}`, http.HandlerFunc(handleWhoami))
-	m.Handle(`/nogzip/whoami{dummy:(?:|\.txt)}`, g(http.HandlerFunc(handleWhoami)))
+	m.Handle(`/whoami{dummy:(?:|\.txt)}`, g((http.HandlerFunc(handleWhoami))))
+	m.Handle(`/nogzip/whoami{dummy:(?:|\.txt)}`, http.HandlerFunc(handleWhoami))
 
-	m.Handle("/demo/fizzbuzz{dummy:(?:|_stream)}", http.HandlerFunc(handleFizzBuzz))
-	m.Handle("/nogzip/demo/fizzbuzz{dummy:(?:|_stream)}", g(http.HandlerFunc(handleFizzBuzz)))
+	m.Handle("/demo/fizzbuzz{dummy:(?:|_stream)}", g(http.HandlerFunc(handleFizzBuzz)))
+	m.Handle("/nogzip/demo/fizzbuzz{dummy:(?:|_stream)}", http.HandlerFunc(handleFizzBuzz))
 
-	m.Handle("/demo/basic/{id}/{pw}", http.HandlerFunc(handleBasic))
-	m.Handle("/nogzip/demo/basic/{id}/{pw}", g(http.HandlerFunc(handleBasic)))
+	m.Handle("/demo/basic/{id}/{pw}", g(http.HandlerFunc(handleBasic)))
+	m.Handle("/nogzip/demo/basic/{id}/{pw}", http.HandlerFunc(handleBasic))
 
-	m.Handle(`/demo/status/{code:\d{3}}`, http.HandlerFunc(handleStatus))
-	m.Handle(`/nogzip/demo/status/{code:\d{3}}`, g(http.HandlerFunc(handleStatus)))
+	m.Handle(`/demo/status/{code:\d{3}}`, g(http.HandlerFunc(handleStatus)))
+	m.Handle(`/nogzip/demo/status/{code:\d{3}}`, http.HandlerFunc(handleStatus))
 
-	m.Handle(`/demo/type/{major}`, http.HandlerFunc(handleContentType))
-	m.Handle(`/nogzip/demo/type/{major}`, g(http.HandlerFunc(handleContentType)))
-	m.Handle(`/demo/type/{major}/{minor}`, http.HandlerFunc(handleContentType))
-	m.Handle(`/nogzip/demo/type/{major}/{minor}`, g(http.HandlerFunc(handleContentType)))
+	m.Handle(`/demo/type/{major}`, g(http.HandlerFunc(handleContentType)))
+	m.Handle(`/nogzip/demo/type/{major}`, http.HandlerFunc(handleContentType))
+	m.Handle(`/demo/type/{major}/{minor}`, g(http.HandlerFunc(handleContentType)))
+	m.Handle(`/nogzip/demo/type/{major}/{minor}`, http.HandlerFunc(handleContentType))
 
 	m.Handle("/favicon.ico", g(http.FileServer(statikFS)))
 	m.PathPrefix("/nogzip/").Handler(http.HandlerFunc(handleDump))
