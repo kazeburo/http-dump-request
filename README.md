@@ -4,7 +4,11 @@ http-dump-request server and docker container for test or monitoring
 
 ## API
 
+If URLPrefix is `nogzip`, http-dump-request skip gzip filter.
+
 ### dump request
+
+Start with `/` or `/nogzip/`
 
 ```
 % curl http://localhost:3000/ 
@@ -14,24 +18,43 @@ Accept: */*
 User-Agent: curl/7.64.1
 ```
 
+
 ### whoami / hostname
+
+`/whoami` or `/whoami.txt` or `/nogzip/whoami` or `/nogzip/whoami.txt`
 
 ```
 % curl --compressed localhost:3000/whoami 
 my-great-hostname
 ```
 
-`/whoami.txt` is also supported.
-
 
 ### Status Code
+
+`/demo/status/{code}` or `/nogzip/demo/status/{code}`
 
 ```
 % curl --compressed localhost:3000/demo/status/418
 418 I'm a teapot
 ```
 
+### Content-Type
+
+`/demo/type/{content-type}` or `/nogzip/demo/type/{content-type}`
+
+```
+% curl -I  --compressed localhost:3000/demo/type/image/x-icon
+HTTP/1.1 200 OK
+Content-Type: image/x-icon
+Date: Mon, 15 Mar 2021 06:52:40 GMT
+Content-Length: 45
+```
+
+body is `dummy content for content-type: image/x-icon`
+
 ### fizzbuzz stream
+
+`/demo/fizzbuzz_stream` or `/nogzip/demo/fizzbuzz_stream`
 
 fizzbuzz with chunked transfer and interval
 
@@ -76,7 +99,7 @@ fizzbuzz with chunked transfer and interval
 
 Use URI path as id and password
 
-`/demo/basic/{id}/{password}`
+`/demo/basic/{id}/{password}` or `/nogzip/demo/basic/{id}/{password}`
 
 ```
 %  curl --fail localhost:3000/demo/basic/fizz/buzz 
@@ -94,12 +117,16 @@ User-Agent: curl/7.64.1
 
 ### health check
 
+`/live` or `/nogzip/live`
+
 ```
 % curl http://localhost:3000/live
 OK
 ```
 
 ### version
+
+`/version` or `/nogip/version`
 
 ```
 % curl http://localhost:3000/version

@@ -235,6 +235,19 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(fmt.Sprintf("%03d %s\n", code, msg)))
 }
 
+func handleContentType(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	ct := vars["major"]
+	if vars["minor"] != "" {
+		ct = ct + "/"
+		ct = ct + vars["minor"]
+	}
+	w.Header().Set("Content-Type", ct)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(fmt.Sprintf("dummy content for content-type: %s\n", ct)))
+
+}
+
 func handleFizzBuzz(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
@@ -256,19 +269,6 @@ func handleFizzBuzz(w http.ResponseWriter, r *http.Request) {
 		flusher.Flush()
 		time.Sleep(300 * time.Millisecond)
 	}
-}
-
-func ng(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.Contains(r.URL.RawQuery, "nogzip") || strings.Contains(r.URL.RawQuery, "no-gzip") {
-			deletedAE := r.Header.Get("Accept-Encoding")
-			if deletedAE != "" {
-				r.Header.Set("Hdr-Accept-Encoding", deletedAE)
-			}
-			r.Header.Del("Accept-Encoding")
-		}
-		next.ServeHTTP(w, r)
-	})
 }
 
 func dumpRequest(r *http.Request) (string, error) {
@@ -313,15 +313,36 @@ func _main() int {
 	g, _ := gziphandler.NewGzipLevelAndMinSize(gzip.DefaultCompression, 5)
 
 	m := mux.NewRouter()
-	m.Handle("/live", ng(g(http.HandlerFunc(handleHello))))
-	m.Handle("/version", ng(g(http.HandlerFunc(handleVersion))))
-	m.Handle("/source", ng(g(http.HandlerFunc(handleSource(source)))))
-	m.Handle(`/whoami{dummy:(?:|\.txt)}`, ng(g(http.HandlerFunc(handleWhoami))))
-	m.Handle("/demo/fizzbuzz{dummy:(?:|_stream)}", ng(g(http.HandlerFunc(handleFizzBuzz))))
-	m.Handle("/demo/basic/{id}/{pw}", ng(g(http.HandlerFunc(handleBasic))))
-	m.Handle(`/demo/status/{code:\d{3}}`, ng(g(http.HandlerFunc(handleStatus))))
-	m.Handle("/favicon.ico", http.FileServer(statikFS))
-	m.PathPrefix("/").Handler(ng(g(http.HandlerFunc(handleDump))))
+	m.Handle("/live", http.HandlerFunc(handleHello))
+	m.Handle("/nogzip/live", g(http.HandlerFunc(handleHello)))
+
+	m.Handle("/version", http.HandlerFunc(handleVersion))
+	m.Handle("/nogzip/version", g(http.HandlerFunc(handleVersion)))
+
+	m.Handle("/source", http.HandlerFunc(handleSource(source)))
+	m.Handle("/nogzip/source", g(http.HandlerFunc(handleSource(source))))
+
+	m.Handle(`/whoami{dummy:(?:|\.txt)}`, http.HandlerFunc(handleWhoami))
+	m.Handle(`/nogzip/whoami{dummy:(?:|\.txt)}`, g(http.HandlerFunc(handleWhoami)))
+
+	m.Handle("/demo/fizzbuzz{dummy:(?:|_stream)}", http.HandlerFunc(handleFizzBuzz))
+	m.Handle("/nogzip/demo/fizzbuzz{dummy:(?:|_stream)}", g(http.HandlerFunc(handleFizzBuzz)))
+
+	m.Handle("/demo/basic/{id}/{pw}", http.HandlerFunc(handleBasic))
+	m.Handle("/nogzip/demo/basic/{id}/{pw}", g(http.HandlerFunc(handleBasic)))
+
+	m.Handle(`/demo/status/{code:\d{3}}`, http.HandlerFunc(handleStatus))
+	m.Handle(`/nogzip/demo/status/{code:\d{3}}`, g(http.HandlerFunc(handleStatus)))
+
+	m.Handle(`/demo/type/{major}`, http.HandlerFunc(handleContentType))
+	m.Handle(`/nogzip/demo/type/{major}`, g(http.HandlerFunc(handleContentType)))
+	m.Handle(`/demo/type/{major}/{minor}`, http.HandlerFunc(handleContentType))
+	m.Handle(`/nogzip/demo/type/{major}/{minor}`, g(http.HandlerFunc(handleContentType)))
+
+	m.Handle("/favicon.ico", g(http.FileServer(statikFS)))
+	m.PathPrefix("/nogzip/").Handler(http.HandlerFunc(handleDump))
+	m.PathPrefix("/").Handler(g(http.HandlerFunc(handleDump)))
+
 	server := http.Server{
 		Handler:      m,
 		ReadTimeout:  opts.ReadTimeout,
