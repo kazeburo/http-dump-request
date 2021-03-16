@@ -142,12 +142,27 @@ func formatHTML(w http.ResponseWriter, r *http.Request, name, code, title string
 		return
 	}
 	indexTmpl.Execute(w, dumpMsg)
-
 }
 
 func handleSource(code string) func(w http.ResponseWriter, r *http.Request) {
+	dumpMsg, err := colorHTML("Source Code", code)
+	if err != nil {
+		panic(err)
+	}
+	dumpMsg.Title = "Source Code"
+	indexTmpl, err := getTemplate("index.html")
+	if err != nil {
+		panic(err)
+	}
+	var b bytes.Buffer
+	indexTmpl.Execute(&b, dumpMsg)
+
 	return func(w http.ResponseWriter, r *http.Request) {
-		formatHTML(w, r, "Go", code, "Source Code")
+		if strings.Contains(r.URL.RawQuery, "plain") || strings.Index(r.UserAgent(), "curl/") == 0 {
+			w.Write([]byte(code))
+			return
+		}
+		w.Write(b.Bytes())
 	}
 }
 
