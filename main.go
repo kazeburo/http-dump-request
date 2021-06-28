@@ -250,6 +250,28 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(fmt.Sprintf("%03d %s\n", code, msg)))
 }
 
+func handleDelay(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	s, err := strconv.Atoi(vars["sec"])
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	if s == 0 || s > 90 {
+		w.WriteHeader(400)
+		w.Write([]byte("Delay Seconds " + vars["sec"] + " is not supported\n"))
+		return
+	}
+	time.Sleep(time.Duration(s) * time.Second)
+	w.WriteHeader(200)
+	n := "s"
+	if s == 1 {
+		n = ""
+	}
+	w.Write([]byte(fmt.Sprintf("%d second%s delayed\n", s, n)))
+}
+
 func handleContentType(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	ct := vars["major"]
@@ -353,6 +375,9 @@ func _main() int {
 	m.Handle(`/nogzip/demo/type/{major}`, http.HandlerFunc(handleContentType))
 	m.Handle(`/demo/type/{major}/{minor}`, g(http.HandlerFunc(handleContentType)))
 	m.Handle(`/nogzip/demo/type/{major}/{minor}`, http.HandlerFunc(handleContentType))
+
+	m.Handle(`/demo/delay/{sec:\d+}`, g(http.HandlerFunc(handleDelay)))
+	m.Handle(`/nogzip/demo/delay/{sec:\d+}`, http.HandlerFunc(handleDelay))
 
 	m.Handle("/favicon.ico", g(http.FileServer(statikFS)))
 	m.PathPrefix("/nogzip/").Handler(http.HandlerFunc(handleDump))

@@ -38,6 +38,18 @@ my-great-hostname
 418 I'm a teapot
 ```
 
+
+
+### Delay response
+
+`/demo/delay/{seconds}` or `/nogzip/demo/delay/{seconds}`
+
+```
+% time curl --compressed localhost:3000/demo/delay/6
+6 seconds delayed
+curl localhost:3000/demo/delay/6  0.01s user 0.01s system 0% cpu 6.022 total
+```
+
 ### Content-Type
 
 `/demo/type/{content-type}` or `/nogzip/demo/type/{content-type}`
