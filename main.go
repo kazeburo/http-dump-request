@@ -309,11 +309,13 @@ func handleFizzBuzz(w http.ResponseWriter, r *http.Request) {
 }
 
 func dumpRequest(r *http.Request) (string, error) {
+	addr := r.RemoteAddr
 	r2 := r.Clone(context.Background())
 	if deletedAE := r.Header.Get("Hdr-Accept-Encoding"); deletedAE != "" {
 		r2.Header.Set("Accept-Encoding", deletedAE)
 		r2.Header.Del("Hdr-Accept-Encoding")
 	}
+	r2.Header.Set("Http-Dump-Remore-Addr", addr)
 	dump, err := httputil.DumpRequest(r2, true)
 	if err != nil {
 		return "", err
