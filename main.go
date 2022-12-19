@@ -315,7 +315,7 @@ func dumpRequest(r *http.Request) (string, error) {
 		r2.Header.Set("Accept-Encoding", deletedAE)
 		r2.Header.Del("Hdr-Accept-Encoding")
 	}
-	r2.Header.Set("Http-Dump-Remore-Addr", addr)
+	r2.Header.Set("Http-Dump-Remote-Addr", addr)
 	dump, err := httputil.DumpRequest(r2, true)
 	if err != nil {
 		return "", err
