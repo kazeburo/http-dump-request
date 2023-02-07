@@ -17,6 +17,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/NYTimes/gziphandler"
 	"github.com/alecthomas/chroma/formatters/html"
 	"github.com/alecthomas/chroma/lexers"
@@ -62,7 +63,7 @@ func getFile(fileName string) (string, error) {
 }
 
 func getTemplate(fileName string) (*template.Template, error) {
-	indexHTML, err := getFile("index.html")
+	indexHTML, err := getFile(fileName)
 	if err != nil {
 		return nil, err
 	}
@@ -73,6 +74,7 @@ type dumpData struct {
 	Body  string
 	Style string
 	Title string
+	UUID string
 }
 
 type preWrapper struct {
@@ -119,6 +121,7 @@ func colorHTML(name, code string) (*dumpData, error) {
 	dumpMsg := &dumpData{
 		Body:  body,
 		Style: pwr.styleAttr,
+		UUID: uuid.NewString(),
 	}
 	return dumpMsg, nil
 }

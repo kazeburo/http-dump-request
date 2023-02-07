@@ -63,9 +63,14 @@
 
         <div class="field box" id="output" {{.Style}}>{{.Body}}</div>
 
-        <div class="notification">
-            If you want plaintext http dump, add <code>plain</code> to query string.
-        </div>
+        <footer class="footer">
+            <div class="content has-text-centered">
+                <p>If you want plaintext http dump, add <code>plain</code> to query string.</p>
+                <p>
+                    <a href="/{{.UUID}}">uuid</a>
+                </p>
+            </div>
+        </footer>
     </div>
 </body>
 
