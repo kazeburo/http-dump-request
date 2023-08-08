@@ -17,11 +17,11 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/NYTimes/gziphandler"
 	"github.com/alecthomas/chroma/formatters/html"
 	"github.com/alecthomas/chroma/lexers"
 	"github.com/alecthomas/chroma/styles"
+	"github.com/google/uuid"
 	_ "github.com/kazeburo/http-dump-request/statik"
 
 	"github.com/gorilla/mux"
@@ -74,7 +74,7 @@ type dumpData struct {
 	Body  string
 	Style string
 	Title string
-	UUID string
+	UUID  string
 }
 
 type preWrapper struct {
@@ -121,7 +121,7 @@ func colorHTML(name, code string) (*dumpData, error) {
 	dumpMsg := &dumpData{
 		Body:  body,
 		Style: pwr.styleAttr,
-		UUID: uuid.NewString(),
+		UUID:  uuid.NewString(),
 	}
 	return dumpMsg, nil
 }
@@ -275,6 +275,38 @@ func handleDelay(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(fmt.Sprintf("%d second%s delayed\n", s, n)))
 }
 
+func handlePause(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	s, err := strconv.Atoi(vars["sec"])
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	if s == 0 || s > 90 {
+		w.WriteHeader(400)
+		w.Write([]byte("Pause Seconds " + vars["sec"] + " is not supported\n"))
+		return
+	}
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		w.WriteHeader(500)
+		w.Write([]byte("expected http.ResponseWriter to be an http.Flusher"))
+		return
+	}
+
+	w.WriteHeader(200)
+	n := "s"
+	if s == 1 {
+		n = ""
+	}
+	w.Write([]byte(fmt.Sprintf("%d second%s\n", s, n)))
+	flusher.Flush()
+	time.Sleep(time.Duration(s) * time.Second)
+	w.Write([]byte("delayed\n"))
+}
+
 func handleContentType(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	ct := vars["major"]
@@ -383,6 +415,9 @@ func _main() int {
 
 	m.Handle(`/demo/delay/{sec:\d+}`, g(http.HandlerFunc(handleDelay)))
 	m.Handle(`/nogzip/demo/delay/{sec:\d+}`, http.HandlerFunc(handleDelay))
+
+	m.Handle(`/demo/pause/{sec:\d+}`, g(http.HandlerFunc(handlePause)))
+	m.Handle(`/nogzip/demo/pause/{sec:\d+}`, http.HandlerFunc(handlePause))
 
 	m.Handle("/favicon.ico", g(http.FileServer(statikFS)))
 	m.PathPrefix("/nogzip/").Handler(http.HandlerFunc(handleDump))
